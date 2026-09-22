@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
@@ -411,16 +412,34 @@ class DuoVerticalBar extends StatelessWidget {
       regions: regions,
     );
     final tabCount = tabs.isNotEmpty ? tabs.length : reservedTabs;
-    final tabsHeight = tabCount == 0
-        ? 0.0
-        : IOS26GlassCapsule.tabsHeight(tabCount) + kDuoBarGroupSpacing;
 
     return Padding(
       // Safe areas are asymmetric on iPhone Duo; read each edge on its own.
       padding: EdgeInsets.only(top: insets.top, bottom: insets.bottom),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final room = constraints.maxHeight - tabsHeight;
+          // The strip can be shorter than the tab capsule wants: on the outer
+          // display in landscape it is about 240pt once the status region and
+          // the home indicator are out, and five tabs ask for 262. The tab
+          // items are flexible, so the capsule gives up height first — down
+          // to the strip, less the one control the actions keep at minimum —
+          // rather than overflow the column.
+          final minControls = actions.isEmpty && leading == null
+              ? 0.0
+              : IOS26GlassCapsule.actionsHeight(1) + kDuoBarGroupSpacing;
+          final capsuleHeight = tabCount == 0
+              ? 0.0
+              : math.max(
+                  0.0,
+                  math.min(
+                    IOS26GlassCapsule.tabsHeight(tabCount),
+                    constraints.maxHeight - minControls,
+                  ),
+                );
+          final tabsHeight = tabCount == 0
+              ? 0.0
+              : capsuleHeight + kDuoBarGroupSpacing;
+          final room = math.max(0.0, constraints.maxHeight - tabsHeight);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -429,7 +448,7 @@ class DuoVerticalBar extends StatelessWidget {
               if (tabs.isNotEmpty)
                 SizedBox(
                   width: IOS26GlassCapsule.width,
-                  height: IOS26GlassCapsule.tabsHeight(tabs.length),
+                  height: capsuleHeight,
                   child: IOS26GlassCapsule(
                     items: [
                       for (final tab in tabs)
